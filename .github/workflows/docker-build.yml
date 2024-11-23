@@ -1,49 +1,90 @@
-name: Build and Push Docker Image
+name: Docker Build and Test
 
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:latest
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: tracker
+          POSTGRES_PASSWORD: trackerpass
+          POSTGRES_DB: billtrackerdb
+        options: >-
+          --health-cmd="pg_isready -U tracker -d billtrackerdb"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
-      # Step 1: Checkout the repository code
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Step 2: Set up JDK
-      - name: Set up JDK 21
+      - name: Set up JDK
         uses: actions/setup-java@v3
         with:
-          java-version: '21'
           distribution: 'temurin'
+          java-version: '21'
 
-      # Step 3: Build the JAR file using Maven
-      - name: Build with Maven
-        run: mvn clean package
+      - name: Cache Maven Dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven
+
+      - name: Wait for PostgreSQL
+        run: sleep 15
+
+      - name: Run Maven Tests
+        run: mvn clean test
         env:
-          MAVEN_OPTS: "-Dmaven.repo.local=./.m2"
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/billtrackerdb
+          SPRING_DATASOURCE_USERNAME: tracker
+          SPRING_DATASOURCE_PASSWORD: trackerpass
 
-      # Step 4: Log in to Docker Hub
+      - name: Build Maven Package
+        run: mvn clean package -DskipTests
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/billtrackerdb
+          SPRING_DATASOURCE_USERNAME: tracker
+          SPRING_DATASOURCE_PASSWORD: trackerpass
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Step 5: Build the Docker image
-      - name: Build Docker image
-        run: docker build -t mrsankofa/billtracker:latest .
+      - name: Build Docker Image
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/billtracker:latest .
 
-      # Step 6: Push the Docker image to Docker Hub
-      - name: Push Docker image
-        run: docker push mrsankofa/billtracker:latest
+      - name: Run Docker Container for Verification
+        run: |
+          docker run -d \
+            -e SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/billtrackerdb \
+            -e SPRING_DATASOURCE_USERNAME=tracker \
+            -e SPRING_DATASOURCE_PASSWORD=trackerpass \
+            -p 8081:8081 \
+            --name billtracker \
+            ${{ secrets.DOCKER_USERNAME }}/billtracker:latest
+
+      - name: Test Application Running in Docker
+        run: curl --fail http://localhost:8081/actuator/health
+
+      - name: Push Docker Image to Docker Hub
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/billtracker:latest
+
+
 
 # TODO: Try this process later
 #      # Build the Docker image with version tag
