@@ -55,6 +55,9 @@ jobs:
       - name: Build Docker Image
         run: docker build -t billtracker:latest .
 
+      - name: Check Docker Logs
+        run: docker logs $(docker ps -q --filter "ancestor=billtracker:latest")
+
       - name: Run Docker Container for Verification
         run: |
           docker run -d \
