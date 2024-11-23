@@ -1,0 +1,28 @@
+version: '3.8'
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/billtrackerdb
+      SPRING_DATASOURCE_USERNAME: tracker
+      SPRING_DATASOURCE_PASSWORD: trackerpass
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: tracker
+      POSTGRES_PASSWORD: trackerpass
+      POSTGRES_DB: billtrackerdb
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:
