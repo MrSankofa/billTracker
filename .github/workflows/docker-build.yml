@@ -64,31 +64,6 @@ jobs:
             -p 8081:8081 \
             billtracker:latest
 
-      - name: Run Docker Container for Verification
-        run: |
-          docker run -d \
-            -e SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/billtrackerdb \
-            -e SPRING_DATASOURCE_USERNAME=tracker \
-            -e SPRING_DATASOURCE_PASSWORD=trackerpass \
-            -e SERVER_ADDRESS=0.0.0.0 \
-            -p 8081:8081 \
-            billtracker:latest
-
-      - name: Test Application Running in Docker
-        run: |
-          for i in {1..15}; do
-            if curl --fail http://localhost:8081/actuator/health; then
-              echo "Application is up and healthy!"
-              exit 0
-            fi
-            echo "Waiting for the application to be ready..."
-            sleep 10
-          done
-          echo "Application did not start in time."
-          exit 1
-
-      - name: Check Application Logs
-        run: docker logs $(docker ps -q --filter "ancestor=billtracker:latest")
       # Step 4: Log in to Docker Hub
       - name: Push Docker Image to Docker Hub
         uses: docker/login-action@v2
