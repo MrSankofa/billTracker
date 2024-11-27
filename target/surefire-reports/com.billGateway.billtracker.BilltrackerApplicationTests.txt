@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.billGateway.billtracker.BilltrackerApplicationTests
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.517 s -- in com.billGateway.billtracker.BilltrackerApplicationTests
